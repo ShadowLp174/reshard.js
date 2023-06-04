@@ -219,6 +219,7 @@ export async function handleEvent(
         }
 
         for (const server of event.servers) {
+          if (!client.options.instanceServers.includes(server._id)) continue;
           client.servers.getOrCreate(server._id, server);
         }
 
@@ -245,6 +246,7 @@ export async function handleEvent(
       break;
     }
     case "Message": {
+      if (!client.channels.has(event.channel)) return;
       if (!client.messages.has(event._id)) {
         // TODO: this should not be necessary in future protocols:
         if (event.author && client.options.eagerFetching) {
@@ -260,6 +262,7 @@ export async function handleEvent(
     }
     case "MessageUpdate": {
       const message = client.messages.getOrPartial(event.id);
+      if (!client.channels.has(event.channel)) return;
       if (message) {
         const previousMessage = {
           ...client.messages.getUnderlyingObject(event.id),
@@ -292,6 +295,7 @@ export async function handleEvent(
       break;
     }
     case "MessageDelete": {
+      if (!client.channels.has(event.channel)) return;
       if (client.messages.getOrPartial(event.id)) {
         const message = client.messages.getUnderlyingObject(event.id);
         client.emit("messageDelete", message);
@@ -321,6 +325,7 @@ export async function handleEvent(
     }
     case "MessageReact": {
       const message = client.messages.getOrPartial(event.id);
+      if (!client.channels.has(message?.channelId ?? "")) return;
       if (message) {
         const reactions = message.reactions;
         const set = reactions.get(event.emoji_id)!;
@@ -342,6 +347,7 @@ export async function handleEvent(
     }
     case "MessageUnreact": {
       const message = client.messages.getOrPartial(event.id);
+      if (!client.channels.has(message?.channelId ?? "")) return;
       if (message) {
         const set = message.reactions.get(event.emoji_id);
         if (set?.has(event.user_id)) {
@@ -361,6 +367,7 @@ export async function handleEvent(
     }
     case "MessageRemoveReaction": {
       const message = client.messages.getOrPartial(event.id);
+      if (!client.channels.has(message?.channelId ?? "")) return;
       if (message) {
         const reactions = message.reactions;
         if (reactions.has(event.emoji_id)) {
@@ -381,6 +388,7 @@ export async function handleEvent(
     }
     case "ChannelUpdate": {
       const channel = client.channels.getOrPartial(event.id);
+      if (!client.servers.has(channel?.serverId ?? "")) return;
       if (channel) {
         const previousChannel = {
           ...client.channels.getUnderlyingObject(event.id),
@@ -414,12 +422,14 @@ export async function handleEvent(
     case "ChannelDelete": {
       if (client.channels.getOrPartial(event.id)) {
         const channel = client.channels.getUnderlyingObject(event.id);
+        if (!client.servers.has(channel?.serverId ?? "")) return;
         client.emit("channelDelete", channel);
         client.channels.delete(event.id);
       }
       break;
     }
     case "ChannelGroupJoin": {
+      console.log("TODO: ChannelGroupJoin");
       const channel = client.channels.getOrPartial(event.id);
       if (channel) {
         if (!channel.recipientIds.has(event.user)) {
@@ -455,6 +465,7 @@ export async function handleEvent(
     }
     case "ChannelStartTyping": {
       const channel = client.channels.getOrPartial(event.id);
+      if (!client.servers.has(channel?.serverId ?? "")) return;
       if (channel) {
         if (!channel.typingIds.has(event.user)) {
           channel.typingIds.add(event.user);
@@ -472,6 +483,7 @@ export async function handleEvent(
     }
     case "ChannelStopTyping": {
       const channel = client.channels.getOrPartial(event.id);
+      if (!client.servers.has(channel?.serverId ?? "")) return;
       if (channel) {
         if (channel.typingIds.has(event.user)) {
           channel.typingIds.delete(event.user);
@@ -489,12 +501,14 @@ export async function handleEvent(
     }
     case "ChannelAck": {
       const channel = client.channels.getOrPartial(event.id);
+      if (!client.servers.has(channel?.serverId ?? "")) return;
       if (channel) {
         client.emit("channelAcknowledged", channel, event.message_id);
       }
       break;
     }
     case "ServerCreate": {
+      if (!client.options.instanceServers.includes(event.server._id)) return;
       if (!client.servers.has(event.server._id)) {
         batch(() => {
           for (const channel of event.channels) {
@@ -508,6 +522,7 @@ export async function handleEvent(
     }
     case "ServerUpdate": {
       const server = client.servers.getOrPartial(event.id);
+      if (!client.servers.has(server?.id ?? "")) return;
       if (server) {
         const previousServer = {
           ...client.servers.getUnderlyingObject(event.id),
@@ -548,6 +563,7 @@ export async function handleEvent(
       if (client.servers.getOrPartial(event.id)) {
         batch(() => {
           const server = client.servers.getUnderlyingObject(event.id);
+          if (!client.servers.has(server?.id ?? "")) return;
           client.emit("serverDelete", server);
           client.servers.delete(event.id);
 
@@ -560,6 +576,7 @@ export async function handleEvent(
     }
     case "ServerRoleUpdate": {
       const server = client.servers.getOrPartial(event.id);
+      if (!client.servers.has(server?.id ?? "")) return;
       if (server) {
         const role = server.roles.get(event.role_id) ?? {};
         server.roles.set(event.role_id, {
@@ -573,6 +590,7 @@ export async function handleEvent(
     }
     case "ServerRoleDelete": {
       const server = client.servers.getOrPartial(event.id);
+      if (!client.servers.has(server?.id ?? "")) return;
       if (server) {
         let role = {};
         const roles = server.roles;
@@ -592,6 +610,7 @@ export async function handleEvent(
         server: event.id,
         user: event.user,
       };
+      if (!client.servers.has(event.id ?? "")) return;
 
       if (!client.serverMembers.hasByKey(id)) {
         client.emit(
@@ -606,6 +625,7 @@ export async function handleEvent(
     }
     case "ServerMemberUpdate": {
       const member = client.serverMembers.getOrPartial(event.id);
+      if (!client.servers.has(member?.id.server ?? "")) return;
       if (member) {
         const previousMember = {
           ...client.serverMembers.getUnderlyingObject(
@@ -655,6 +675,7 @@ export async function handleEvent(
         const member = client.serverMembers.getUnderlyingObject(
           id.server + id.user
         );
+        if (!client.servers.has(member?.id.server ?? "")) return;
         client.emit("serverMemberLeave", member);
         client.serverMembers.delete(id.server + id.user);
       }

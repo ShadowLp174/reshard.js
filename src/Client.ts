@@ -98,6 +98,8 @@ export type ClientOptions = Partial<EventClientOptions> & {
    */
   baseURL: string;
 
+  instanceServers: Array<string>;
+
   /**
    * Whether to allow partial objects to emit from events
    * @default false
@@ -182,6 +184,7 @@ export class Client extends EventEmitter<Events> {
       eagerFetching: true,
       syncUnreads: false,
       autoReconnect: true,
+      instanceServers: [],
       /**
        * Retry delay function
        * @param retryCount Count
@@ -200,6 +203,11 @@ export class Client extends EventEmitter<Events> {
       },
       ...options,
     };
+
+    this.options.instanceServers.includes = function(id, fromIndex?: number | undefined) {
+      if (this.length === 0) return true; // no limits for this instance
+      return this.indexOf(id, fromIndex) !== -1;
+    }
 
     this.configuration = configuration;
 
